@@ -1,5 +1,7 @@
+/* app/globals.css - Add these lines to your existing file */
 @import "tailwindcss";
 
+/* Add these minimal variables (keep your existing styles) */
 :root {
   --bg-primary: #000000;
   --bg-secondary: #111111;
@@ -10,52 +12,25 @@
   --accent-hover: #f5f5f5;
 }
 
-* {
-  box-sizing: border-box;
-}
-
+/* Keep all your existing body and other styles, just add these: */
 body {
   margin: 0;
-  padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Add this line for the black background */
   background: var(--bg-primary);
   color: var(--text-primary);
-  overflow: hidden;
 }
 
+/* Keep all your existing code and other styles */
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
 
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
-}
-
-/* Focus outline */
-*:focus {
-  outline: 2px solid var(--accent-color);
-  outline-offset: 2px;
-}
-
-*:focus:not(:focus-visible) {
-  outline: none;
+* {
+  box-sizing: border-box;
 }

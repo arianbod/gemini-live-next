@@ -1,4 +1,4 @@
-// components/App.tsx
+// components/App.tsx - Minimal changes to your existing file
 'use client';
 
 import { useRef, useState } from 'react';
@@ -7,31 +7,28 @@ import ControlTray from './control-tray/ControlTray';
 import { LiveClientOptions } from '../types';
 import { AIAvatar } from './AIAvatar';
 
-// Get API key from environment variables - will connect to our backend
+// Keep your existing backend configuration
 const BACKEND_URL =
 	process.env.NEXT_PUBLIC_BACKEND_URL || 'ws://localhost:8080';
 
 const apiOptions: LiveClientOptions = {
-	// We'll use the backend URL instead of API key
 	backendUrl: BACKEND_URL,
 };
 
 function App() {
-	// this video reference is used for displaying the active stream, whether that is the webcam or screen capture
 	const videoRef = useRef<HTMLVideoElement>(null);
-	// either the screen capture, the video or null, if null we hide it
 	const [videoStream, setVideoStream] = useState<MediaStream | null>(null);
 
 	return (
+		// Simple black background with Tailwind classes
 		<div className='w-full h-screen bg-black flex flex-col items-center justify-center relative overflow-hidden'>
 			<LiveAPIProvider options={apiOptions}>
-				{/* Main content area */}
+				{/* Main content area with the avatar */}
 				<main className='flex-1 flex items-center justify-center w-full'>
-					{/* Central AI Avatar */}
 					<AIAvatar />
 				</main>
 
-				{/* Video Stream - hidden by default, shown when active */}
+				{/* Video Stream - only show when active */}
 				{videoStream && (
 					<div className='absolute top-4 right-4 w-48 h-36 rounded-lg overflow-hidden border border-gray-700'>
 						<video
@@ -43,7 +40,7 @@ function App() {
 					</div>
 				)}
 
-				{/* Control buttons at bottom */}
+				{/* Keep your existing ControlTray but with minimal props */}
 				<ControlTray
 					videoRef={videoRef}
 					supportsVideo={true}

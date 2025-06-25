@@ -1,4 +1,4 @@
-// components/control-tray/ControlTray.tsx
+// components/control-tray/ControlTray.tsx - Replace your existing file with this simplified version
 'use client';
 
 import { memo, RefObject, useEffect, useRef, useState } from 'react';
@@ -31,7 +31,7 @@ function ControlTray({
 
 	const { client, connected, connect, disconnect } = useLiveAPIContext();
 
-	// Audio recording logic
+	// Keep all your existing audio recording logic
 	useEffect(() => {
 		const onData = (base64: string) => {
 			client.sendRealtimeInput([
@@ -53,7 +53,7 @@ function ControlTray({
 		};
 	}, [connected, client, muted, audioRecorder]);
 
-	// Video streaming logic
+	// Keep all your existing video streaming logic
 	useEffect(() => {
 		if (videoRef.current) {
 			videoRef.current.srcObject = activeVideoStream;
@@ -92,7 +92,7 @@ function ControlTray({
 		};
 	}, [connected, activeVideoStream, client, videoRef]);
 
-	// Handle video stream changes
+	// Simplified video stream handlers
 	const toggleWebcam = async () => {
 		if (webcam.isStreaming) {
 			webcam.stop();
@@ -100,7 +100,7 @@ function ControlTray({
 			onVideoStreamChange(null);
 		} else {
 			const stream = await webcam.start();
-			screenCapture.stop(); // Stop screen capture if active
+			screenCapture.stop();
 			setActiveVideoStream(stream);
 			onVideoStreamChange(stream);
 		}
@@ -113,7 +113,7 @@ function ControlTray({
 			onVideoStreamChange(null);
 		} else {
 			const stream = await screenCapture.start();
-			webcam.stop(); // Stop webcam if active
+			webcam.stop();
 			setActiveVideoStream(stream);
 			onVideoStreamChange(stream);
 		}
@@ -126,6 +126,7 @@ function ControlTray({
 				ref={renderCanvasRef}
 			/>
 
+			{/* Simplified control tray with Tailwind classes */}
 			<div className='fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50'>
 				<div className='flex items-center space-x-4 bg-gray-900 bg-opacity-80 backdrop-blur-sm rounded-full px-6 py-3 border border-gray-700'>
 					{/* Microphone Button */}

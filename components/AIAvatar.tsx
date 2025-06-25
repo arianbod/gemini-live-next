@@ -1,4 +1,4 @@
-// components/AIAvatar.tsx
+// components/AIAvatar.tsx - New simplified component (create this new file)
 'use client';
 
 import { useLiveAPIContext } from '../contexts/LiveAPIContext';
@@ -8,7 +8,7 @@ export const AIAvatar = () => {
 	const { connected, volume } = useLiveAPIContext();
 	const [isListening, setIsListening] = useState(false);
 
-	// Generate random wave heights for animation when not receiving audio
+	// Generate random wave heights for idle animation
 	const [randomWaves, setRandomWaves] = useState<number[]>([
 		0.1, 0.3, 0.2, 0.4, 0.1,
 	]);

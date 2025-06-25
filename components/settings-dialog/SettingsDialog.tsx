@@ -1,4 +1,4 @@
-// components/settings-dialog/SettingsDialog.tsx
+// components/settings-dialog/SettingsDialog.tsx - Replace your existing file with this simplified version
 'use client';
 
 import { useState } from 'react';
@@ -37,7 +37,7 @@ export default function SettingsDialog() {
 
 	return (
 		<>
-			{/* Settings Trigger Button */}
+			{/* Settings Trigger Button - Small and minimal */}
 			<button
 				className='w-8 h-8 rounded-full bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white transition-all duration-200 flex items-center justify-center'
 				onClick={() => setOpen(!open)}
@@ -45,7 +45,7 @@ export default function SettingsDialog() {
 				<span className='material-symbols-outlined text-sm'>settings</span>
 			</button>
 
-			{/* Settings Modal */}
+			{/* Settings Modal - Only when open */}
 			{open && (
 				<>
 					{/* Backdrop */}
@@ -55,7 +55,7 @@ export default function SettingsDialog() {
 					/>
 
 					{/* Modal Content */}
-					<div className='fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 w-80 bg-gray-900 rounded-lg border border-gray-700 shadow-xl'>
+					<div className='fixed -top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 w-80 bg-gray-900 rounded-lg border border-gray-700 shadow-xl'>
 						{/* Header */}
 						<div className='flex items-center justify-between p-4 border-b border-gray-700'>
 							<h2 className='text-lg font-semibold text-white'>
