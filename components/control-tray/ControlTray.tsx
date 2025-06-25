@@ -1,117 +1,37 @@
-// src/components/control-tray/ControlTray.tsx
-/**
- * Copyright 2024 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// components/control-tray/ControlTray.tsx
+'use client';
 
-import cn from 'classnames';
-
-import { memo, ReactNode, RefObject, useEffect, useRef, useState } from 'react';
+import { memo, RefObject, useEffect, useRef, useState } from 'react';
 import { useLiveAPIContext } from '../../contexts/LiveAPIContext';
-import { UseMediaStreamResult } from '../../hooks/use-media-stream-mux';
 import { useScreenCapture } from '../../hooks/use-screen-capture';
 import { useWebcam } from '../../hooks/use-webcam';
 import { AudioRecorder } from '@/lib/audio-recorder';
-import AudioPulse from '../audio-pulse/AudioPulse';
-import './control-tray.scss';
 import SettingsDialog from '../settings-dialog/SettingsDialog';
 
 export type ControlTrayProps = {
 	videoRef: RefObject<HTMLVideoElement>;
-	children?: ReactNode;
 	supportsVideo: boolean;
 	onVideoStreamChange?: (stream: MediaStream | null) => void;
 	enableEditingSettings?: boolean;
 };
 
-type MediaStreamButtonProps = {
-	isStreaming: boolean;
-	onIcon: string;
-	offIcon: string;
-	start: () => Promise<any>;
-	stop: () => any;
-	label: string;
-};
-
-/**
- * button used for triggering webcam or screen-capture
- */
-const MediaStreamButton = memo(
-	({
-		isStreaming,
-		onIcon,
-		offIcon,
-		start,
-		stop,
-		label,
-	}: MediaStreamButtonProps) => (
-		<div className='media-button-wrapper'>
-			{isStreaming ? (
-				<button
-					className='action-button media-button active'
-					onClick={stop}
-					title={`Stop ${label}`}>
-					<span className='material-symbols-outlined'>{onIcon}</span>
-					<span className='button-ripple'></span>
-				</button>
-			) : (
-				<button
-					className='action-button media-button'
-					onClick={start}
-					title={`Start ${label}`}>
-					<span className='material-symbols-outlined'>{offIcon}</span>
-					<span className='button-ripple'></span>
-				</button>
-			)}
-			<span className='button-label'>{label}</span>
-		</div>
-	)
-);
-
 function ControlTray({
 	videoRef,
-	children,
 	onVideoStreamChange = () => {},
 	supportsVideo,
 	enableEditingSettings,
 }: ControlTrayProps) {
-	const videoStreams = [useWebcam(), useScreenCapture()];
+	const webcam = useWebcam();
+	const screenCapture = useScreenCapture();
 	const [activeVideoStream, setActiveVideoStream] =
 		useState<MediaStream | null>(null);
-	const [webcam, screenCapture] = videoStreams;
-	const [inVolume, setInVolume] = useState(0);
-	const [audioRecorder] = useState(() => new AudioRecorder());
 	const [muted, setMuted] = useState(false);
+	const [audioRecorder] = useState(() => new AudioRecorder());
 	const renderCanvasRef = useRef<HTMLCanvasElement>(null);
-	const connectButtonRef = useRef<HTMLButtonElement>(null);
 
-	const { client, connected, connect, disconnect, volume } =
-		useLiveAPIContext();
+	const { client, connected, connect, disconnect } = useLiveAPIContext();
 
-	useEffect(() => {
-		if (!connected && connectButtonRef.current) {
-			connectButtonRef.current.focus();
-		}
-	}, [connected]);
-
-	useEffect(() => {
-		document.documentElement.style.setProperty(
-			'--volume',
-			`${Math.max(5, Math.min(inVolume * 200, 8))}px`
-		);
-	}, [inVolume]);
-
+	// Audio recording logic
 	useEffect(() => {
 		const onData = (base64: string) => {
 			client.sendRealtimeInput([
@@ -121,16 +41,19 @@ function ControlTray({
 				},
 			]);
 		};
+
 		if (connected && !muted && audioRecorder) {
-			audioRecorder.on('data', onData).on('volume', setInVolume).start();
+			audioRecorder.on('data', onData).start();
 		} else {
 			audioRecorder.stop();
 		}
+
 		return () => {
-			audioRecorder.off('data', onData).off('volume', setInVolume);
+			audioRecorder.off('data', onData);
 		};
 	}, [connected, client, muted, audioRecorder]);
 
+	// Video streaming logic
 	useEffect(() => {
 		if (videoRef.current) {
 			videoRef.current.srcObject = activeVideoStream;
@@ -142,144 +65,145 @@ function ControlTray({
 			const video = videoRef.current;
 			const canvas = renderCanvasRef.current;
 
-			if (!video || !canvas) {
-				return;
-			}
+			if (!video || !canvas) return;
 
 			const ctx = canvas.getContext('2d')!;
 			canvas.width = video.videoWidth * 0.25;
 			canvas.height = video.videoHeight * 0.25;
+
 			if (canvas.width + canvas.height > 0) {
-				ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+				ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 				const base64 = canvas.toDataURL('image/jpeg', 1.0);
-				const data = base64.slice(base64.indexOf(',') + 1, Infinity);
+				const data = base64.slice(base64.indexOf(',') + 1);
 				client.sendRealtimeInput([{ mimeType: 'image/jpeg', data }]);
 			}
+
 			if (connected) {
 				timeoutId = window.setTimeout(sendVideoFrame, 1000 / 0.5);
 			}
 		}
+
 		if (connected && activeVideoStream !== null) {
 			requestAnimationFrame(sendVideoFrame);
 		}
+
 		return () => {
 			clearTimeout(timeoutId);
 		};
 	}, [connected, activeVideoStream, client, videoRef]);
 
-	//handler for swapping from one video-stream to the next
-	const changeStreams = (next?: UseMediaStreamResult) => async () => {
-		if (next) {
-			const mediaStream = await next.start();
-			setActiveVideoStream(mediaStream);
-			onVideoStreamChange(mediaStream);
-		} else {
+	// Handle video stream changes
+	const toggleWebcam = async () => {
+		if (webcam.isStreaming) {
+			webcam.stop();
 			setActiveVideoStream(null);
 			onVideoStreamChange(null);
+		} else {
+			const stream = await webcam.start();
+			screenCapture.stop(); // Stop screen capture if active
+			setActiveVideoStream(stream);
+			onVideoStreamChange(stream);
 		}
+	};
 
-		videoStreams.filter((msr) => msr !== next).forEach((msr) => msr.stop());
+	const toggleScreenShare = async () => {
+		if (screenCapture.isStreaming) {
+			screenCapture.stop();
+			setActiveVideoStream(null);
+			onVideoStreamChange(null);
+		} else {
+			const stream = await screenCapture.start();
+			webcam.stop(); // Stop webcam if active
+			setActiveVideoStream(stream);
+			onVideoStreamChange(stream);
+		}
 	};
 
 	return (
-		<section className='control-tray'>
+		<>
 			<canvas
 				style={{ display: 'none' }}
 				ref={renderCanvasRef}
 			/>
 
-			{/* Main Controls */}
-			<div className='controls-container'>
-				<nav className={cn('actions-nav', { disabled: !connected })}>
+			<div className='fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50'>
+				<div className='flex items-center space-x-4 bg-gray-900 bg-opacity-80 backdrop-blur-sm rounded-full px-6 py-3 border border-gray-700'>
 					{/* Microphone Button */}
-					<div className='mic-button-wrapper'>
-						<button
-							className={cn('action-button mic-button', { muted })}
-							onClick={() => setMuted(!muted)}
-							title={muted ? 'Unmute Microphone' : 'Mute Microphone'}>
-							{!muted ? (
-								<span className='material-symbols-outlined filled'>mic</span>
-							) : (
-								<span className='material-symbols-outlined filled'>
-									mic_off
-								</span>
-							)}
-							<span className='button-ripple'></span>
-						</button>
-						<span className='button-label'>Microphone</span>
-					</div>
-
-					{/* Audio Visualizer */}
-					<div className='volume-display'>
-						<div className='action-button no-action outlined'>
-							<AudioPulse
-								volume={volume}
-								active={connected}
-								hover={false}
-							/>
-						</div>
-						<span className='button-label'>Audio Level</span>
-					</div>
+					<button
+						className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 ${
+							!muted && connected
+								? 'bg-white text-black hover:bg-gray-200'
+								: 'bg-gray-700 text-white hover:bg-gray-600'
+						}`}
+						onClick={() => setMuted(!muted)}
+						title={muted ? 'Unmute' : 'Mute'}
+						disabled={!connected}>
+						<span className='material-symbols-outlined text-lg'>
+							{!muted ? 'mic' : 'mic_off'}
+						</span>
+					</button>
 
 					{supportsVideo && (
 						<>
-							{/* Screen Capture */}
-							<MediaStreamButton
-								isStreaming={screenCapture.isStreaming}
-								start={changeStreams(screenCapture)}
-								stop={changeStreams()}
-								onIcon='cancel_presentation'
-								offIcon='present_to_all'
-								label='Screen Share'
-							/>
+							{/* Camera Button */}
+							<button
+								className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
+									webcam.isStreaming
+										? 'bg-white text-black hover:bg-gray-200'
+										: 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
+								}`}
+								onClick={toggleWebcam}
+								title={webcam.isStreaming ? 'Stop Camera' : 'Start Camera'}
+								disabled={!connected}>
+								<span className='material-symbols-outlined text-sm'>
+									{webcam.isStreaming ? 'videocam_off' : 'videocam'}
+								</span>
+							</button>
 
-							{/* Webcam */}
-							<MediaStreamButton
-								isStreaming={webcam.isStreaming}
-								start={changeStreams(webcam)}
-								stop={changeStreams()}
-								onIcon='videocam_off'
-								offIcon='videocam'
-								label='Camera'
-							/>
+							{/* Screen Share Button */}
+							<button
+								className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
+									screenCapture.isStreaming
+										? 'bg-white text-black hover:bg-gray-200'
+										: 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
+								}`}
+								onClick={toggleScreenShare}
+								title={
+									screenCapture.isStreaming ? 'Stop Sharing' : 'Share Screen'
+								}
+								disabled={!connected}>
+								<span className='material-symbols-outlined text-sm'>
+									{screenCapture.isStreaming
+										? 'cancel_presentation'
+										: 'present_to_all'}
+								</span>
+							</button>
 						</>
 					)}
 
-					{children}
-				</nav>
-
-				{/* Connection Button */}
-				<div className={cn('connection-container', { connected })}>
-					<div className='connection-button-container'>
-						<button
-							ref={connectButtonRef}
-							className={cn('action-button connect-toggle', { connected })}
-							onClick={connected ? disconnect : connect}
-							title={connected ? 'Disconnect' : 'Connect'}>
-							<span className='material-symbols-outlined filled'>
-								{connected ? 'pause' : 'play_arrow'}
-							</span>
-							<span className='button-ripple'></span>
-						</button>
-					</div>
-					<div className='connection-status'>
-						<div className={cn('status-indicator', { connected })}>
-							<div className='status-dot'></div>
-						</div>
-						<span className='status-text'>
-							{connected ? 'Live' : 'Disconnected'}
+					{/* Connection Toggle */}
+					<button
+						className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 ${
+							connected
+								? 'bg-red-600 text-white hover:bg-red-700'
+								: 'bg-green-600 text-white hover:bg-green-700'
+						}`}
+						onClick={connected ? disconnect : connect}
+						title={connected ? 'Disconnect' : 'Connect'}>
+						<span className='material-symbols-outlined text-lg'>
+							{connected ? 'stop' : 'play_arrow'}
 						</span>
-					</div>
-				</div>
+					</button>
 
-				{/* Settings */}
-				{enableEditingSettings && (
-					<div className='settings-wrapper'>
-						<SettingsDialog />
-					</div>
-				)}
+					{/* Settings Button */}
+					{enableEditingSettings && (
+						<div className='ml-2'>
+							<SettingsDialog />
+						</div>
+					)}
+				</div>
 			</div>
-		</section>
+		</>
 	);
 }
 

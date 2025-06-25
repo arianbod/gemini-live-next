@@ -1,249 +1,124 @@
-// src/components/settings-dialog/SettingsDialog.tsx
-import {
-	ChangeEvent,
-	FormEventHandler,
-	useCallback,
-	useMemo,
-	useState,
-} from 'react';
-import './settings-dialog.scss';
-import { useLiveAPIContext } from '../../contexts/LiveAPIContext';
-import VoiceSelector from './VoiceSelector';
-import ResponseModalitySelector from './ResponseModalitySelector';
-import { FunctionDeclaration, LiveConnectConfig, Tool } from '@google/genai';
+// components/settings-dialog/SettingsDialog.tsx
+'use client';
 
-type FunctionDeclarationsTool = Tool & {
-	functionDeclarations: FunctionDeclaration[];
-};
+import { useState } from 'react';
+import { useLiveAPIContext } from '../../contexts/LiveAPIContext';
+
+const voiceOptions = [
+	{ value: 'Puck', label: 'Puck' },
+	{ value: 'Charon', label: 'Charon' },
+	{ value: 'Kore', label: 'Kore' },
+	{ value: 'Fenrir', label: 'Fenrir' },
+	{ value: 'Aoede', label: 'Aoede' },
+];
 
 export default function SettingsDialog() {
 	const [open, setOpen] = useState(false);
 	const { config, setConfig, connected } = useLiveAPIContext();
-	const functionDeclarations: FunctionDeclaration[] = useMemo(() => {
-		if (!Array.isArray(config.tools)) {
-			return [];
-		}
-		return (config.tools as Tool[])
-			.filter((t: Tool): t is FunctionDeclarationsTool =>
-				Array.isArray((t as any).functionDeclarations)
-			)
-			.map((t) => t.functionDeclarations)
-			.filter((fc) => !!fc)
-			.flat();
-	}, [config]);
 
-	// system instructions can come in many types
-	const systemInstruction = useMemo(() => {
-		if (!config.systemInstruction) {
-			return '';
-		}
-		if (typeof config.systemInstruction === 'string') {
-			return config.systemInstruction;
-		}
-		if (Array.isArray(config.systemInstruction)) {
-			return config.systemInstruction
-				.map((p) => (typeof p === 'string' ? p : p.text))
-				.join('\n');
-		}
-		if (
-			typeof config.systemInstruction === 'object' &&
-			'parts' in config.systemInstruction
-		) {
-			return (
-				config.systemInstruction.parts?.map((p) => p.text).join('\n') || ''
-			);
-		}
-		return '';
-	}, [config]);
+	const currentVoice =
+		config?.speechConfig?.voiceConfig?.prebuiltVoiceConfig?.voiceName ||
+		'Aoede';
 
-	const updateConfig: FormEventHandler<HTMLTextAreaElement> = useCallback(
-		(event: ChangeEvent<HTMLTextAreaElement>) => {
-			const newConfig: LiveConnectConfig = {
-				...config,
-				systemInstruction: event.target.value,
-			};
-			setConfig(newConfig);
-		},
-		[config, setConfig]
-	);
+	const updateVoice = (voiceName: string) => {
+		if (!config) return;
 
-	const updateFunctionDescription = useCallback(
-		(editedFdName: string, newDescription: string) => {
-			const newConfig: LiveConnectConfig = {
-				...config,
-				tools:
-					config.tools?.map((tool) => {
-						const fdTool = tool as FunctionDeclarationsTool;
-						if (!Array.isArray(fdTool.functionDeclarations)) {
-							return tool;
-						}
-						return {
-							...tool,
-							functionDeclarations: fdTool.functionDeclarations.map((fd) =>
-								fd.name === editedFdName
-									? { ...fd, description: newDescription }
-									: fd
-							),
-						};
-					}) || [],
-			};
-			setConfig(newConfig);
-		},
-		[config, setConfig]
-	);
-
-	const closeDialog = () => setOpen(false);
+		setConfig({
+			...config,
+			speechConfig: {
+				voiceConfig: {
+					prebuiltVoiceConfig: {
+						voiceName: voiceName,
+					},
+				},
+			},
+		});
+	};
 
 	return (
-		<div className='settings-dialog'>
+		<>
+			{/* Settings Trigger Button */}
 			<button
-				className='settings-trigger'
+				className='w-8 h-8 rounded-full bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white transition-all duration-200 flex items-center justify-center'
 				onClick={() => setOpen(!open)}
-				title='Open Settings'>
-				<span className='material-symbols-outlined'>settings</span>
-				<span className='button-ripple'></span>
+				title='Settings'>
+				<span className='material-symbols-outlined text-sm'>settings</span>
 			</button>
 
+			{/* Settings Modal */}
 			{open && (
 				<>
+					{/* Backdrop */}
 					<div
-						className='dialog-backdrop'
-						onClick={closeDialog}
+						className='fixed inset-0 bg-black bg-opacity-50 z-40'
+						onClick={() => setOpen(false)}
 					/>
-					<div className='dialog-container'>
-						<div className='dialog-content'>
-							{/* Header */}
-							<div className='dialog-header'>
-								<div className='header-content'>
-									<h2 className='dialog-title'>
-										<span className='title-icon'>
-											<span className='material-symbols-outlined'>tune</span>
-										</span>
-										Configuration
-									</h2>
-									<button
-										className='close-button'
-										onClick={closeDialog}
-										title='Close Settings'>
-										<span className='material-symbols-outlined'>close</span>
-										<span className='button-ripple'></span>
-									</button>
+
+					{/* Modal Content */}
+					<div className='fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 w-80 bg-gray-900 rounded-lg border border-gray-700 shadow-xl'>
+						{/* Header */}
+						<div className='flex items-center justify-between p-4 border-b border-gray-700'>
+							<h2 className='text-lg font-semibold text-white'>
+								Voice Settings
+							</h2>
+							<button
+								className='w-6 h-6 rounded-full bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white transition-all duration-200 flex items-center justify-center'
+								onClick={() => setOpen(false)}>
+								<span className='material-symbols-outlined text-sm'>close</span>
+							</button>
+						</div>
+
+						{/* Content */}
+						<div className='p-4'>
+							{connected && (
+								<div className='mb-4 p-3 bg-yellow-900 bg-opacity-30 border border-yellow-600 rounded-md'>
+									<p className='text-yellow-400 text-sm'>
+										Voice changes will take effect on next connection.
+									</p>
 								</div>
+							)}
 
-								{connected && (
-									<div className='connection-warning'>
-										<div className='warning-content'>
-											<span className='material-symbols-outlined'>info</span>
-											<p>
-												Settings can only be modified when disconnected. Changes
-												will take effect on next connection.
-											</p>
-										</div>
-									</div>
-								)}
-							</div>
+							<div className='space-y-3'>
+								<label className='block text-sm font-medium text-gray-300'>
+									Select Voice
+								</label>
 
-							{/* Settings Content */}
-							<div
-								className={`settings-content ${connected ? 'disabled' : ''}`}>
-								{/* Voice & Response Settings */}
-								<section className='settings-section'>
-									<div className='section-header'>
-										<h3>Audio Configuration</h3>
-										<div className='section-divider'></div>
-									</div>
-									<div className='mode-selectors'>
-										<ResponseModalitySelector />
-										<VoiceSelector />
-									</div>
-								</section>
-
-								{/* System Instructions */}
-								<section className='settings-section'>
-									<div className='section-header'>
-										<h3>System Instructions</h3>
-										<div className='section-divider'></div>
-									</div>
-									<div className='instruction-container'>
-										<textarea
-											className='system-instruction-input'
-											onChange={updateConfig}
-											value={systemInstruction}
-											placeholder='Enter system instructions for the AI assistant...'
-											disabled={connected}
-										/>
-										<div className='input-footer'>
-											<span className='input-hint'>
-												Define how the AI should behave and respond to your
-												requests
-											</span>
-										</div>
-									</div>
-								</section>
-
-								{/* Function Declarations */}
-								{functionDeclarations.length > 0 && (
-									<section className='settings-section'>
-										<div className='section-header'>
-											<h3>Function Declarations</h3>
-											<div className='section-divider'></div>
-										</div>
-										<div className='function-declarations'>
-											<div className='functions-grid'>
-												{functionDeclarations.map((fd, fdKey) => (
-													<div
-														className='function-card'
-														key={`function-${fdKey}`}>
-														<div className='function-header'>
-															<div className='function-name'>
-																<span className='function-icon'>
-																	<span className='material-symbols-outlined'>
-																		code
-																	</span>
-																</span>
-																<span className='name-text'>{fd.name}</span>
-															</div>
-															<div className='function-params'>
-																{Object.keys(
-																	fd.parameters?.properties || {}
-																).map((param, k) => (
-																	<span
-																		key={k}
-																		className='param-tag'>
-																		{param}
-																	</span>
-																))}
-															</div>
-														</div>
-														<div className='function-description'>
-															<label className='description-label'>
-																Description
-															</label>
-															<textarea
-																key={`fd-${fd.description}`}
-																className='description-input'
-																defaultValue={fd.description}
-																onBlur={(e) =>
-																	updateFunctionDescription(
-																		fd.name!,
-																		e.target.value
-																	)
-																}
-																disabled={connected}
-																rows={2}
-															/>
-														</div>
-													</div>
-												))}
+								<div className='space-y-2'>
+									{voiceOptions.map((voice) => (
+										<button
+											key={voice.value}
+											className={`w-full text-left px-3 py-2 rounded-md transition-all duration-200 ${
+												currentVoice === voice.value
+													? 'bg-white text-black'
+													: 'bg-gray-800 text-white hover:bg-gray-700'
+											}`}
+											onClick={() => updateVoice(voice.value)}
+											disabled={connected}>
+											<div className='flex items-center justify-between'>
+												<span>{voice.label}</span>
+												{currentVoice === voice.value && (
+													<span className='material-symbols-outlined text-sm'>
+														check
+													</span>
+												)}
 											</div>
-										</div>
-									</section>
-								)}
+										</button>
+									))}
+								</div>
 							</div>
+						</div>
+
+						{/* Footer */}
+						<div className='p-4 border-t border-gray-700'>
+							<button
+								className='w-full bg-white text-black py-2 px-4 rounded-md hover:bg-gray-200 transition-all duration-200'
+								onClick={() => setOpen(false)}>
+								Done
+							</button>
 						</div>
 					</div>
 				</>
 			)}
-		</div>
+		</>
 	);
 }
