@@ -19,10 +19,10 @@ import cn from 'classnames';
 
 import { memo, ReactNode, RefObject, useEffect, useRef, useState } from 'react';
 import { useLiveAPIContext } from '../../contexts/LiveAPIContext';
-import { UseMediaStreamResult } from '../../src/hooks/use-media-stream-mux';
-import { useScreenCapture } from '../../src/hooks/use-screen-capture';
-import { useWebcam } from '../../src/hooks/use-webcam';
-import { AudioRecorder } from '../../src/lib/audio-recorder';
+import { UseMediaStreamResult } from '../../hooks/use-media-stream-mux';
+import { useScreenCapture } from '../../hooks/use-screen-capture';
+import { useWebcam } from '../../hooks/use-webcam';
+import { AudioRecorder } from '@/lib/audio-recorder';
 import AudioPulse from '../audio-pulse/AudioPulse';
 import './control-tray.scss';
 import SettingsDialog from '../settings-dialog/SettingsDialog';

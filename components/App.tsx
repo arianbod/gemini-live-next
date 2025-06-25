@@ -10,14 +10,12 @@ import ControlTray from './control-tray/ControlTray';
 import cn from 'classnames';
 import { LiveClientOptions } from '../types';
 
-// Get API key from environment variables (Next.js format)
-const API_KEY = process.env.NEXT_PUBLIC_GEMINI_API_KEY as string;
-if (typeof API_KEY !== 'string') {
-	throw new Error('set NEXT_PUBLIC_GEMINI_API_KEY in .env.local');
-}
+// Get API key from environment variables - will connect to our backend
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'ws://localhost:8080';
 
 const apiOptions: LiveClientOptions = {
-	apiKey: API_KEY,
+	// We'll use the backend URL instead of API key
+	backendUrl: BACKEND_URL,
 };
 
 // Floating particles component

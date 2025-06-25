@@ -1,222 +1,197 @@
-// src/components/side-panel/SidePanel.tsx
-/**
- * Copyright 2024 Google LLC
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+// File location: components/side-panel/SidePanel.tsx
+import React, { useRef, useEffect, useState } from 'react';
+import Logger from '../logger/Logger'; // Default import
+// Alternative: import { Logger } from '../logger/Logger'; // Named import (if you prefer)
 
-import './react-select.scss';
-import cn from 'classnames';
-import { useEffect, useRef, useState } from 'react';
-import { RiSidebarFoldLine, RiSidebarUnfoldLine } from 'react-icons/ri';
-import Select from 'react-select';
-import { useLiveAPIContext } from '../../contexts/LiveAPIContext';
-import { useLoggerStore } from '../../src/lib/store-logger';
-import Logger, { LoggerFilterType } from '../logger/Logger';
-import './side-panel.scss';
+export type LoggerFilterType = 'none' | 'client' | 'server' | 'error';
 
-const filterOptions = [
-	{ value: 'conversations', label: 'Conversations' },
-	{ value: 'tools', label: 'Tool Use' },
-	{ value: 'none', label: 'All' },
+interface FilterOption {
+	value: LoggerFilterType;
+	label: string;
+}
+
+interface SidePanelProps {
+	isOpen: boolean;
+	onClose: () => void;
+	logEntries: Array<{
+		date: any;
+		type: string;
+		message: any;
+	}>;
+	isRecording?: boolean;
+	onClearLog?: () => void;
+}
+
+const filterOptions: FilterOption[] = [
+	{ value: 'none', label: 'All Messages' },
+	{ value: 'client', label: 'Client Only' },
+	{ value: 'server', label: 'Server Only' },
+	{ value: 'error', label: 'Errors Only' },
 ];
 
-export default function SidePanel() {
-	const { connected, client } = useLiveAPIContext();
-	const [open, setOpen] = useState(true);
+export const SidePanel: React.FC<SidePanelProps> = ({
+	isOpen,
+	onClose,
+	logEntries,
+	isRecording = false,
+	onClearLog,
+}) => {
 	const loggerRef = useRef<HTMLDivElement>(null);
-	const loggerLastHeightRef = useRef<number>(-1);
-	const { log, logs } = useLoggerStore();
+	const [selectedOption, setSelectedOption] = useState<FilterOption>(
+		filterOptions[0]
+	);
 
-	const [textInput, setTextInput] = useState('');
-	const [selectedOption, setSelectedOption] = useState<{
-		value: string;
-		label: string;
-	} | null>(filterOptions[0]);
-	const inputRef = useRef<HTMLTextAreaElement>(null);
+	// Filter log entries based on selected filter
+	const filteredEntries = React.useMemo(() => {
+		if (selectedOption.value === 'none') {
+			return logEntries;
+		}
 
-	//scroll the log to the bottom when new logs come in
+		return logEntries.filter((entry) => {
+			switch (selectedOption.value) {
+				case 'client':
+					return entry.type.startsWith('client.');
+				case 'server':
+					return entry.type.startsWith('server.');
+				case 'error':
+					return entry.type.includes('error');
+				default:
+					return true;
+			}
+		});
+	}, [logEntries, selectedOption.value]);
+
+	// Auto-scroll to bottom when new entries are added
 	useEffect(() => {
 		if (loggerRef.current) {
-			const el = loggerRef.current;
-			const scrollHeight = el.scrollHeight;
-			if (scrollHeight !== loggerLastHeightRef.current) {
-				el.scrollTop = scrollHeight;
-				loggerLastHeightRef.current = scrollHeight;
+			const loggerContainer = loggerRef.current.querySelector('.overflow-auto');
+			if (loggerContainer) {
+				loggerContainer.scrollTop = loggerContainer.scrollHeight;
 			}
 		}
-	}, [logs]);
+	}, [filteredEntries]);
 
-	// listen for log events and store them
-	useEffect(() => {
-		client.on('log', log);
-		return () => {
-			client.off('log', log);
-		};
-	}, [client, log]);
-
-	const handleSubmit = () => {
-		if (!textInput.trim()) return;
-
-		client.send([{ text: textInput }]);
-		setTextInput('');
-		if (inputRef.current) {
-			inputRef.current.focus();
-		}
-	};
-
-	const handleKeyPress = (e: React.KeyboardEvent) => {
-		if (e.key === 'Enter' && !e.shiftKey) {
-			e.preventDefault();
-			handleSubmit();
-		}
-	};
+	if (!isOpen) return null;
 
 	return (
-		<div className={cn('side-panel', { open })}>
-			{/* Header */}
-			<header className='panel-header'>
-				<div className='header-content'>
-					<div className='title-section'>
-						<h2 className='panel-title'>Console</h2>
-						<div className='title-glow'></div>
-					</div>
-					<button
-						className='toggle-button'
-						onClick={() => setOpen(!open)}
-						title={open ? 'Collapse Panel' : 'Expand Panel'}>
-						{open ? (
-							<RiSidebarFoldLine size={20} />
-						) : (
-							<RiSidebarUnfoldLine size={20} />
-						)}
-						<span className='button-ripple'></span>
-					</button>
-				</div>
-			</header>
+		<div className='fixed inset-0 z-50 flex'>
+			{/* Backdrop */}
+			<div
+				className='absolute inset-0 bg-black bg-opacity-50 transition-opacity'
+				onClick={onClose}
+			/>
 
-			{/* Controls Section */}
-			<section className='panel-controls'>
-				<div className='filter-section'>
-					<label className='filter-label'>Filter Messages</label>
-					<Select
-						className='react-select'
-						classNamePrefix='react-select'
-						styles={{
-							control: (baseStyles, state) => ({
-								...baseStyles,
-								background: 'rgba(255, 255, 255, 0.08)',
-								backdropFilter: 'blur(10px)',
-								border: '1px solid rgba(255, 255, 255, 0.12)',
-								borderRadius: '12px',
-								color: '#ffffff',
-								minHeight: '40px',
-								boxShadow: state.isFocused
-									? '0 0 0 2px rgba(139, 92, 246, 0.3)'
-									: 'none',
-								'&:hover': {
-									borderColor: 'rgba(255, 255, 255, 0.2)',
-								},
-							}),
-							option: (styles, { isFocused, isSelected }) => ({
-								...styles,
-								backgroundColor: isFocused
-									? 'rgba(139, 92, 246, 0.2)'
-									: isSelected
-									? 'rgba(139, 92, 246, 0.3)'
-									: 'transparent',
-								color: '#ffffff',
-								cursor: 'pointer',
-								'&:hover': {
-									backgroundColor: 'rgba(139, 92, 246, 0.2)',
-								},
-							}),
-							menu: (styles) => ({
-								...styles,
-								background: 'rgba(20, 20, 30, 0.95)',
-								backdropFilter: 'blur(20px)',
-								border: '1px solid rgba(255, 255, 255, 0.12)',
-								borderRadius: '12px',
-								boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-							}),
-							singleValue: (styles) => ({
-								...styles,
-								color: '#ffffff',
-							}),
-						}}
-						value={selectedOption}
-						options={filterOptions}
-						onChange={(e) => setSelectedOption(e)}
-						isSearchable={false}
+			{/* Panel */}
+			<div className='relative ml-auto w-full max-w-2xl bg-white shadow-xl flex flex-col h-full'>
+				{/* Header */}
+				<div className='flex items-center justify-between p-4 border-b border-gray-200'>
+					<div className='flex items-center gap-4'>
+						<h2 className='text-lg font-semibold text-gray-900'>
+							Connection Logger
+						</h2>
+
+						{/* Filter Dropdown */}
+						<div className='relative'>
+							<select
+								value={selectedOption.value}
+								onChange={(e) => {
+									const option = filterOptions.find(
+										(opt) => opt.value === e.target.value
+									);
+									if (option) setSelectedOption(option);
+								}}
+								className='text-sm border border-gray-300 rounded-md px-3 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'>
+								{filterOptions.map((option) => (
+									<option
+										key={option.value}
+										value={option.value}>
+										{option.label}
+									</option>
+								))}
+							</select>
+						</div>
+
+						{/* Entry Count */}
+						<span className='text-sm text-gray-500'>
+							{filteredEntries.length} / {logEntries.length} entries
+						</span>
+					</div>
+
+					<div className='flex items-center gap-3'>
+						{/* Recording Indicator */}
+						{isRecording && (
+							<div className='flex items-center gap-2'>
+								<div className='w-2 h-2 bg-red-500 rounded-full animate-pulse'></div>
+								<span className='text-sm text-red-600 font-medium'>Live</span>
+							</div>
+						)}
+
+						{/* Clear Button */}
+						{onClearLog && logEntries.length > 0 && (
+							<button
+								onClick={onClearLog}
+								className='text-sm text-gray-500 hover:text-gray-700 px-3 py-1 rounded-md hover:bg-gray-100 transition-colors'>
+								Clear All
+							</button>
+						)}
+
+						{/* Close Button */}
+						<button
+							onClick={onClose}
+							className='text-gray-400 hover:text-gray-600 transition-colors p-1'
+							aria-label='Close panel'>
+							<svg
+								className='w-6 h-6'
+								fill='none'
+								stroke='currentColor'
+								viewBox='0 0 24 24'>
+								<path
+									strokeLinecap='round'
+									strokeLinejoin='round'
+									strokeWidth={2}
+									d='M6 18L18 6M6 6l12 12'
+								/>
+							</svg>
+						</button>
+					</div>
+				</div>
+
+				{/* Logger Content */}
+				<div
+					className='flex-1 logger-container'
+					ref={loggerRef}>
+					<Logger
+						entries={filteredEntries}
+						isRecording={isRecording}
+						onClear={onClearLog}
 					/>
 				</div>
 
-				<div className='status-section'>
-					<div className={cn('streaming-indicator', { connected })}>
-						<div className='status-icon'>
-							<div className={cn('status-dot', { connected })}>
-								<div className='status-pulse'></div>
+				{/* Footer */}
+				<div className='p-4 border-t border-gray-200 bg-gray-50'>
+					<div className='flex items-center justify-between text-sm text-gray-600'>
+						<div className='flex items-center gap-4'>
+							<div className='flex items-center gap-2'>
+								<div className='w-3 h-3 bg-blue-500 rounded-sm'></div>
+								<span>Client Messages</span>
+							</div>
+							<div className='flex items-center gap-2'>
+								<div className='w-3 h-3 bg-green-500 rounded-sm'></div>
+								<span>Server Messages</span>
+							</div>
+							<div className='flex items-center gap-2'>
+								<div className='w-3 h-3 bg-red-500 rounded-sm'></div>
+								<span>Errors</span>
 							</div>
 						</div>
-						<span className='status-text'>
-							{connected ? 'Streaming' : 'Paused'}
-						</span>
-					</div>
-				</div>
-			</section>
-
-			{/* Logger Section */}
-			<div
-				className='logger-container'
-				ref={loggerRef}>
-				<Logger
-					filter={(selectedOption?.value as LoggerFilterType) || 'none'}
-				/>
-			</div>
-
-			{/* Input Section */}
-			<div className={cn('input-section', { disabled: !connected })}>
-				<div className='input-container'>
-					<div className='input-wrapper'>
-						<textarea
-							ref={inputRef}
-							className='message-input'
-							value={textInput}
-							onChange={(e) => setTextInput(e.target.value)}
-							onKeyDown={handleKeyPress}
-							placeholder='Type your message...'
-							rows={1}
-							disabled={!connected}
-						/>
-						<button
-							className={cn('send-button', {
-								active: textInput.trim().length > 0 && connected,
-							})}
-							onClick={handleSubmit}
-							disabled={!connected || !textInput.trim()}
-							title='Send Message'>
-							<span className='material-symbols-outlined'>send</span>
-							<span className='button-ripple'></span>
-						</button>
-					</div>
-
-					{!connected && (
-						<div className='connection-prompt'>
-							<span>Connect to start chatting</span>
+						<div className='text-xs'>
+							Last updated: {new Date().toLocaleTimeString()}
 						</div>
-					)}
+					</div>
 				</div>
 			</div>
 		</div>
 	);
-}
+};
+
+export default SidePanel;

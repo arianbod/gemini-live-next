@@ -18,13 +18,13 @@ import './logger.scss';
 
 import cn from 'classnames';
 import { memo, ReactNode } from 'react';
-import { useLoggerStore } from '../../src/lib/store-logger';
+import { useLoggerStore } from '@/lib/store-logger';
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import { vs2015 as dark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import {
 	ClientContentLog as ClientContentLogType,
 	StreamingLog,
-} from '../../src/types';
+} from '../../types';
 import {
 	Content,
 	LiveClientToolResponse,
