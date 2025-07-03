@@ -24,6 +24,7 @@ export default function HomePage() {
 	return (
 		<Suspense fallback={<LoadingComponent />}>
 			<AppComponent />
+			
 		</Suspense>
 	);
 }
